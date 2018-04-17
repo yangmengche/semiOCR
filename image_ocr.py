@@ -90,17 +90,16 @@ target={
         'TEMPLATE' : 'Image__2018-03-15__15-05-19.bmp',
         'LENGTH' : 12,
         'FONT_SIZE' : 72,
-        'BOX' : {'x':73, 'y':315, 'w':700, 'h':140},
-        # 'TARGET_SIZE' : {'w':350, 'h':70},
-        'TARGET_SIZE' : {'w':400, 'h':80},
-        'OFFSET' : {'x':13, 'y':36}
+        'BOX' : {'x':60, 'y':282, 'w':700, 'h':128},
+        'TARGET_SIZE' : {'w':350, 'h':64},
+        'OFFSET' : {'x':13, 'y':33}
     },
     '29': {
         # PKB79813029G6
         'TEMPLATE' : 'Image__2018-03-15__14-57-29.bmp',
         'LENGTH' : 13,
         'FONT_SIZE' : 40,
-        'BOX' : {'x':218, 'y':254, 'w':400, 'h':64},
+        'BOX' : {'x':200, 'y':240, 'w':400, 'h':64},
         'TARGET_SIZE' : {'w':400, 'h':64},
         'OFFSET' : {'x':14, 'y':14}
     },
@@ -109,10 +108,10 @@ target={
         'TEMPLATE' : 'Image__2018-03-15__14-54-54.bmp',
         'LENGTH' : 12,
         'FONT_SIZE' : 72,
-        'BOX' : {'x':70, 'y':274, 'w':700, 'h':140},
+        'BOX' : {'x':65, 'y':234, 'w':700, 'h':140},
         # 'TARGET_SIZE' : {'w':350, 'h':70},
         'TARGET_SIZE' : {'w':400, 'h':80},
-        'OFFSET' : {'x':13, 'y':36},
+        'OFFSET' : {'x':13, 'y':6},
     }
 }
 
@@ -147,31 +146,29 @@ tm = Image.open(TEMPLATE)
 
 def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=False):
     im = tm.copy()
-    draw = ImageDraw.Draw(im)
-    # code = random.sample(CHARS, LENGTH)
-    # code = ''.join(code)
-    # label.write(code+'\n')
     color = random.randrange(0, 128)
     x = random.randrange(BOX['x']-3, BOX['x']+3)
     y = random.randrange(BOX['y']-3, BOX['y']+3)
     tsize = font.getsize('A')
     chw = tsize[0] - 4.5
-    for i, ch in enumerate(text):
-        draw.text((int(x+i*chw), y), ch, font=font, fill=color)
-    tsize = (chw*len(text), tsize[1])
-
+    draw = ImageDraw.Draw(im)
     if box['w'] < tsize[0]:
         box['w'] = tsize[0]
     if box['h'] < tsize[1]:
-        box['h'] = tsize[1]
-    bx = box['x'] - (box['w'] - tsize[0])//2
-    by = box['y'] - (box['h'] - tsize[1])//2
-    cropBox = ( bx, by, bx + box['w'], by + box['h'])
-    # im.save('train_img1.png')
+        box['h'] = tsize[1]    
+    Image.new('RGB', (box['w'], box['h']))
+    tsize = (chw*len(text), tsize[1])
+    x_offset = (box['w'] - tsize[0])//2
+    y_offset = (box['h'] - tsize[1])//2
+    for i, ch in enumerate(text):
+        draw.text((int(x+x_offset+i*chw), y+y_offset), ch, font=font, fill=color)
+
+    cropBox = (box['x'], box['y'], box['x'] + box['w'], box['y'] + box['h'])
+    im.save('train_img1.png')
     im = im.crop(cropBox)
-    # im.save('train_img2.png')
+    im.save('train_img2.png')
     im = im.resize((w, h), Image.BILINEAR)
-    # im.save('train_img3.png')
+    im.save('train_img3.png')
     a = np.array(im)
     a = a.astype(np.float32) / 255
     a = np.expand_dims(a, 0)
@@ -522,9 +519,7 @@ def train(run_name, start_epoch, stop_epoch, img_w, img_h, box):
                         initial_epoch=start_epoch)
 
 def loadData(files, w, h, box):
-    bx = box['x'] - OFFSET['x']
-    by = box['y'] - OFFSET['y']
-    cropBox = ( bx, by, bx + box['w'], by + box['h'])
+    cropBox = (box['x'], box['y'], box['x'] + box['w'], box['y'] + box['h'])
     size = len(files)
     if K.image_data_format() == 'channels_first':
         X_data = np.ones([size, 1, w, h])
@@ -546,10 +541,9 @@ def loadData(files, w, h, box):
     return X_data
 
 def predict(weight, predict, img_w, img_h, box):
+    text_X = loadData(predict, img_w, img_h, box)
     model, input_data, y_pred = createModel(img_w, img_h)
     model.load_weights(weight)
-    text_X = loadData(predict, img_w, img_h, box)
-
     test_func = K.function([input_data], [y_pred])
     pred_result = decode_batch(test_func, text_X)[0]
 
@@ -589,7 +583,7 @@ if __name__ == '__main__':
         if args['answer']:
             batch_predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
         else:
-            predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h']. BOX)
+            predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
 
     else:
         run_name = datetime.datetime.now().strftime('%Y:%m:%d:%H:%M:%S')
