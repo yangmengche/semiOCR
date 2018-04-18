@@ -83,38 +83,38 @@ minibatch_size = 32
 absolute_max_string_len = 16
 words_per_epoch = 16000
 
+random_range=6
 # Target parameter
 target={
     '19': {
-        # 08430097KIA1
+        'TRUTH': '08430097KIA1',
         'TEMPLATE' : 'Image__2018-03-15__15-05-19.bmp',
         'LENGTH' : 12,
         'FONT_SIZE' : 72,
-        'BOX' : {'x':60, 'y':282, 'w':700, 'h':128},
-        'TARGET_SIZE' : {'w':350, 'h':64},
-        'OFFSET' : {'x':13, 'y':33}
+        'BOX' : {'x':60, 'y':282, 'w':700, 'h':140},
+        'TARGET_SIZE' : {'w':490, 'h':98},
+        'OFFSET' : {'x':0, 'y':0}
     },
     '29': {
-        # PKB79813029G6
+        'TRUTH': 'PKB79813029G6',
         'TEMPLATE' : 'Image__2018-03-15__14-57-29.bmp',
         'LENGTH' : 13,
         'FONT_SIZE' : 40,
         'BOX' : {'x':200, 'y':240, 'w':400, 'h':64},
         'TARGET_SIZE' : {'w':400, 'h':64},
-        'OFFSET' : {'x':14, 'y':14}
+        'OFFSET' : {'x':0, 'y':0}
     },
     '54': {
-        # 8LOVO064MMC1
+        'TRUTH' : '8LOVO064MMC1',
         'TEMPLATE' : 'Image__2018-03-15__14-54-54.bmp',
         'LENGTH' : 12,
         'FONT_SIZE' : 72,
-        'BOX' : {'x':65, 'y':234, 'w':700, 'h':140},
-        # 'TARGET_SIZE' : {'w':350, 'h':70},
-        'TARGET_SIZE' : {'w':400, 'h':80},
-        'OFFSET' : {'x':13, 'y':6},
+        'BOX' : {'x':60, 'y':239, 'w':700, 'h':140},
+        'TARGET_SIZE' : {'w':490, 'h':98},
+        'OFFSET' : {'x':0, 'y':0}
     }
 }
-
+TRUTH = target[args['target']]['TRUTH']
 TEMPLATE = os.path.join(root, 'res', target[args['target']]['TEMPLATE'])
 LENGTH = target[args['target']]['LENGTH']
 FONT_SIZE = target[args['target']]['FONT_SIZE']
@@ -138,8 +138,9 @@ def speckle(img):
 # paints the string in a random location the bounding box
 # also uses a random font, a slight random rotation,
 # and a random amount of speckle noise
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import random
+import cv2
 
 font = ImageFont.truetype("SEMI_OCR_Font_document.ttf", FONT_SIZE)
 tm = Image.open(TEMPLATE)
@@ -147,23 +148,36 @@ tm = Image.open(TEMPLATE)
 def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=False):
     im = tm.copy()
     color = random.randrange(0, 128)
-    x = random.randrange(BOX['x']-3, BOX['x']+3)
-    y = random.randrange(BOX['y']-3, BOX['y']+3)
+    x = random.randrange(box['x']-random_range, box['x']+random_range)
+    y = random.randrange(box['y']-random_range, box['y']+random_range)
     tsize = font.getsize('A')
     chw = tsize[0] - 4.5
-    draw = ImageDraw.Draw(im)
+    # draw = ImageDraw.Draw(im)
+
     if box['w'] < tsize[0]:
         box['w'] = tsize[0]
     if box['h'] < tsize[1]:
         box['h'] = tsize[1]    
-    Image.new('RGB', (box['w'], box['h']))
     tsize = (chw*len(text), tsize[1])
+    cropBox = (box['x'], box['y'], box['x'] + box['w'], box['y'] + box['h'])
+    canvas = Image.new('L', (box['w'], box['h']), 255)
+    draw = ImageDraw.Draw(canvas)
+
     x_offset = (box['w'] - tsize[0])//2
     y_offset = (box['h'] - tsize[1])//2
     for i, ch in enumerate(text):
-        draw.text((int(x+x_offset+i*chw), y+y_offset), ch, font=font, fill=color)
+        draw.text((int(x_offset+i*chw), y_offset), ch, font=font, fill=color)
+    # dilate text to simulate laser dot
+    # canvas.save('train_img0.png')
 
-    cropBox = (box['x'], box['y'], box['x'] + box['w'], box['y'] + box['h'])
+    if bool(random.getrandbits(1)):
+        buf = np.array(canvas)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        buf = cv2.dilate(buf, kernel)
+        canvas = Image.fromarray(buf)
+    mask = ImageOps.invert(canvas)
+    im.paste(canvas, box=(x, y), mask=mask)
+
     im.save('train_img1.png')
     im = im.crop(cropBox)
     im.save('train_img2.png')
@@ -401,7 +415,7 @@ class VizCallback(keras.callbacks.Callback):
             num_left -= num_proc
         mean_norm_ed = mean_norm_ed / num
         mean_ed = mean_ed / num
-        print('\nOut of %d samples:  Mean edit distance: %.3f Mean normalized edit distance: %0.3f'
+        print('Out of %d samples:  Mean edit distance: %.3f Mean normalized edit distance: %0.3f\n'
               % (num, mean_ed, mean_norm_ed))
 
     def on_epoch_end(self, epoch, logs={}):
@@ -508,7 +522,7 @@ def train(run_name, start_epoch, stop_epoch, img_w, img_h, box):
 
     viz_cb = VizCallback(run_name, test_func, img_gen.next_val())
 
-    csv_logger = keras.callbacks.CSVLogger('history.csv')
+    csv_logger = keras.callbacks.CSVLogger(os.path.join(OUTPUT_DIR, run_name, 'history.csv'))
 
     history = model.fit_generator(generator=img_gen.next_train(),
                         steps_per_epoch=(words_per_epoch - val_words) // minibatch_size, #(16000 - 3200) // 32
@@ -519,7 +533,9 @@ def train(run_name, start_epoch, stop_epoch, img_w, img_h, box):
                         initial_epoch=start_epoch)
 
 def loadData(files, w, h, box):
-    cropBox = (box['x'], box['y'], box['x'] + box['w'], box['y'] + box['h'])
+    x = box['x'] + OFFSET['x']
+    y = box['y'] + OFFSET['y']
+    cropBox = (x, y, x + box['w'], y + box['h'])
     size = len(files)
     if K.image_data_format() == 'channels_first':
         X_data = np.ones([size, 1, w, h])

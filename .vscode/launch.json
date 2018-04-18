@@ -11,7 +11,7 @@
       "program": "${file}",
       "args": [
         "-t",
-        "19"
+        "54"
       ]
     },
     {
@@ -21,9 +21,9 @@
       "program": "${workspaceFolder}/image_ocr.py",
       "args": [
         "-t",
-        "19",
+        "54",
         "-p",
-        "./testSet/Image__2018-03-15__15-05-19.bmp",
+        "./testSet/Image__2018-03-15__14-54-54.bmp",
         "-w",
         "./model/weights_29_04.h5"
       ]
@@ -35,13 +35,13 @@
       "program": "${workspaceFolder}/image_ocr.py",
       "args": [
         "-t",
-        "19",        
+        "54",
         "-p",
-        "./testSet/Image__2018-03-15__15-05-19.bmp",
+        "./testSet/Image__2018-03-15__14-54-54.bmp",
         "-w",
-        "./model/2018:04:16:09:12:25",
+        "./remote/image_ocr/2018:04:18:09:54:53/weights00.h5",
         "-a",
-        "08430097KIA1"
+        "8LOVO064MMC1"
       ]
     }
   ]

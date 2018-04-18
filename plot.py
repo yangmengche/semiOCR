@@ -24,7 +24,7 @@ with open(os.path.abspath(args['file']), 'r') as csvfile:
 # In[53]:
 
 
-plt.figure('Loss/IOU', figsize=(10, 6))
+plt.figure('Loss', figsize=(10, 6))
 # plt.subplot(211)
 plt.plot(train_loss, label='Train loss')
 plt.plot(val_loss, label='Val loss')
