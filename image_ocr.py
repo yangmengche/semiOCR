@@ -178,11 +178,11 @@ def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=Fa
     mask = ImageOps.invert(canvas)
     im.paste(canvas, box=(x, y), mask=mask)
 
-    im.save('train_img1.png')
+    # im.save('train_img1.png')
     im = im.crop(cropBox)
-    im.save('train_img2.png')
+    # im.save('train_img2.png')
     im = im.resize((w, h), Image.BILINEAR)
-    im.save('train_img3.png')
+    # im.save('train_img3.png')
     a = np.array(im)
     a = a.astype(np.float32) / 255
     a = np.expand_dims(a, 0)
@@ -545,7 +545,7 @@ def loadData(files, w, h, box):
         im = Image.open(f)
         im = im.crop(cropBox)
         im = im.resize((w, h), Image.BILINEAR)
-        im.save('debug.png')        
+        # im.save('debug.png')
         a = np.array(im)
         a = a.astype(np.float32) / 255
         a = np.expand_dims(a, 0)
