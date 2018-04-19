@@ -1,31 +1,7 @@
 # -*- coding: utf-8 -*-
 '''This example uses a convolutional stack followed by a recurrent stack
 and a CTC logloss function to perform optical character recognition
-of generated text images. I have no evidence of whether it actually
-learns general shapes of text, or just is able to recognize all
-the different fonts thrown at it...the purpose is more to demonstrate CTC
-inside of Keras.  Note that the font list may need to be updated
-for the particular OS in use.
-This starts off with 4 letter words.  For the first 12 epochs, the
-difficulty is gradually increased using the TextImageGenerator class
-which is both a generator class for test/train data and a Keras
-callback class. After 20 epochs, longer sequences are thrown at it
-by recompiling the model to handle a wider image and rebuilding
-the word list to include two words separated by a space.
-The table below shows normalized edit distance values. Theano uses
-a slightly different CTC implementation, hence the different results.
-            Norm. ED
-Epoch |   TF   |   TH
-------------------------
-    10   0.027   0.064
-    15   0.038   0.035
-    20   0.043   0.045
-    25   0.014   0.019
-This requires cairo and editdistance packages:
-pip install cairocffi
-pip install editdistance
-Created by Mike Henry
-https://github.com/mbhenry/
+of generated text images.
 '''
 
 import argparse
@@ -100,9 +76,10 @@ target={
         'TEMPLATE' : 'Image__2018-03-15__14-57-29.bmp',
         'LENGTH' : 13,
         'FONT_SIZE' : 40,
-        'BOX' : {'x':200, 'y':240, 'w':400, 'h':64},
-        'TARGET_SIZE' : {'w':400, 'h':64},
-        'OFFSET' : {'x':0, 'y':0}
+        # 'BOX' : {'x':200, 'y':240, 'w':400, 'h':64},
+        'BOX' : {'x':200, 'y':150, 'w':400, 'h':300},
+        'TARGET_SIZE' : {'w':400, 'h':300},
+        'OFFSET' : {'x':19, 'y':103}
     },
     '54': {
         'TRUTH' : '8LOVO064MMC1',
@@ -142,16 +119,21 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 import random
 import cv2
 
-font = ImageFont.truetype("SEMI_OCR_Font_document.ttf", FONT_SIZE)
-tm = Image.open(TEMPLATE)
+# resource for training
+if not args['predict']:
+    font = ImageFont.truetype("SEMI_OCR_Font_document.ttf", FONT_SIZE)
+    tm = Image.open(TEMPLATE)
 
 def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=False):
     im = tm.copy()
     color = random.randrange(0, 128)
-    x = random.randrange(box['x']-random_range, box['x']+random_range)
-    y = random.randrange(box['y']-random_range, box['y']+random_range)
+    # x = random.randrange(box['x']-random_range, box['x']+random_range)
+    # y = random.randrange(box['y']-random_range, box['y']+random_range)
+    x = box['x']
+    y = box['y']
+    text = TRUTH
     tsize = font.getsize('A')
-    chw = tsize[0] - 4.5
+    chw = tsize[0] - 20
     # draw = ImageDraw.Draw(im)
 
     if box['w'] < tsize[0]:
@@ -163,12 +145,12 @@ def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=Fa
     canvas = Image.new('L', (box['w'], box['h']), 255)
     draw = ImageDraw.Draw(canvas)
 
-    x_offset = (box['w'] - tsize[0])//2
-    y_offset = (box['h'] - tsize[1])//2
+    # x_offset = (box['w'] - tsize[0])//2
+    # y_offset = (box['h'] - tsize[1])//2
     for i, ch in enumerate(text):
-        draw.text((int(x_offset+i*chw), y_offset), ch, font=font, fill=color)
+        draw.text((int(OFFSET['x']+i*chw), OFFSET['y']), ch, font=font, fill=color)
     # dilate text to simulate laser dot
-    # canvas.save('train_img0.png')
+    canvas.save('train_img0.png')
 
     if bool(random.getrandbits(1)):
         buf = np.array(canvas)
@@ -178,11 +160,11 @@ def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=Fa
     mask = ImageOps.invert(canvas)
     im.paste(canvas, box=(x, y), mask=mask)
 
-    # im.save('train_img1.png')
+    im.save('train_img1.png')
     im = im.crop(cropBox)
-    # im.save('train_img2.png')
+    im.save('train_img2.png')
     im = im.resize((w, h), Image.BILINEAR)
-    # im.save('train_img3.png')
+    im.save('train_img3.png')
     a = np.array(im)
     a = a.astype(np.float32) / 255
     a = np.expand_dims(a, 0)
@@ -533,9 +515,7 @@ def train(run_name, start_epoch, stop_epoch, img_w, img_h, box):
                         initial_epoch=start_epoch)
 
 def loadData(files, w, h, box):
-    x = box['x'] + OFFSET['x']
-    y = box['y'] + OFFSET['y']
-    cropBox = (x, y, x + box['w'], y + box['h'])
+    cropBox = (box['x'], box['y'], box['x'] + box['w'], box['y'] + box['h'])
     size = len(files)
     if K.image_data_format() == 'channels_first':
         X_data = np.ones([size, 1, w, h])
@@ -545,7 +525,7 @@ def loadData(files, w, h, box):
         im = Image.open(f)
         im = im.crop(cropBox)
         im = im.resize((w, h), Image.BILINEAR)
-        # im.save('debug.png')
+        im.save('debug.png')
         a = np.array(im)
         a = a.astype(np.float32) / 255
         a = np.expand_dims(a, 0)
