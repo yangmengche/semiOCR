@@ -12,11 +12,13 @@ ap.add_argument("-p", "--predict", help="path to file of to predict")
 ap.add_argument("-w", "--weight", help="path to weight file")
 ap.add_argument("-tk", "--tkinter", action='store_true', help="setup tkinter")
 ap.add_argument("-a", "--answer", help="answer of prediction")
+ap.add_argument("-d", "--debug", action='store_true', help="Show debug message")
 args = vars(ap.parse_args())
 
 if('tkinter' in args):
     import matplotlib
     matplotlib.use('Agg')
+DEBUG = args['debug']
 
 import os
 import itertools
@@ -39,6 +41,9 @@ from keras.optimizers import SGD
 from keras.utils.data_utils import get_file
 from keras.preprocessing import image
 import keras.callbacks
+
+#disable FutureWarning
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
 
 root = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(root, 'image_ocr')
@@ -122,7 +127,7 @@ import cv2
 
 # resource for training
 if not args['predict']:
-    font = ImageFont.truetype("SEMI_OCR_Font_document.ttf", FONT_SIZE)
+    font = ImageFont.truetype("./res/SEMI_OCR_Font_document.ttf", FONT_SIZE)
     tm = Image.open(TEMPLATE)
 
 def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=False):
@@ -459,7 +464,9 @@ def createModel(img_w, img_h):
     inner = Dense(get_output_size(), kernel_initializer='he_normal',
                   name='dense2')(concatenate([gru_2, gru_2b]))
     y_pred = Activation('softmax', name='softmax')(inner)
-    Model(inputs=input_data, outputs=y_pred).summary()
+    model = Model(inputs=input_data, outputs=y_pred)
+    if DEBUG:
+        model.summary()
 
     labels = Input(name='the_labels', shape=[absolute_max_string_len], dtype='float32')
     input_length = Input(name='input_length', shape=[1], dtype='int64')
@@ -526,7 +533,8 @@ def loadData(files, w, h, box):
         im = Image.open(f)
         im = im.crop(cropBox)
         im = im.resize((w, h), Image.BILINEAR)
-        im.save('debug.png')
+        if DEBUG:
+            im.save('debug.png')
         a = np.array(im)
         a = a.astype(np.float32) / 255
         a = np.expand_dims(a, 0)
@@ -534,7 +542,8 @@ def loadData(files, w, h, box):
             X_data[i, 0, 0:w, :] = a[0, :, :].T
         else:
             X_data[i, 0:w, :, 0] = a[0, :, :].T
-    # print(X_data.shape)
+    if DEBUG:
+        print(X_data.shape)
     return X_data
 
 def predict(weight, predict, img_w, img_h, box):
