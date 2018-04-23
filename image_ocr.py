@@ -8,17 +8,18 @@ import argparse
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-t", "--target", required=True, help="target type")
-ap.add_argument("-p", "--predict", help="path to file of to predict")
-ap.add_argument("-w", "--weight", help="path to weight file")
-ap.add_argument("-tk", "--tkinter", action='store_true', help="setup tkinter")
-ap.add_argument("-a", "--answer", help="answer of prediction")
-ap.add_argument("-d", "--debug", action='store_true', help="Show debug message")
+ap.add_argument("-p", "--predict", required=True, help="path to file of to predict")
+# ap.add_argument("-w", "--weight", help="path to weight file")
+# ap.add_argument("-tk", "--tkinter", action='store_true', help="setup tkinter")
+# ap.add_argument("-a", "--answer", help="answer of prediction")
+# ap.add_argument("-d", "--debug", action='store_true', help="Show debug message")
 args = vars(ap.parse_args())
 
 if('tkinter' in args):
     import matplotlib
     matplotlib.use('Agg')
-DEBUG = args['debug']
+# DEBUG = args['debug']
+DEBUG = False
 
 import os
 import shutil
@@ -71,7 +72,7 @@ minibatch_size = 32
 absolute_max_string_len = 16
 words_per_epoch = 16000
 
-random_range=6
+random_range=13
 # Target parameter
 target={
     '19': {
@@ -80,9 +81,10 @@ target={
         'LENGTH' : 12,
         'FONT_SIZE' : 75,
         'BOX' : {'x':60, 'y':282, 'w':700, 'h':140},
-        'TARGET_SIZE' : {'w':490, 'h':98},
+        'TARGET_SIZE' : {'w':224, 'h':224},
         'OFFSET' : {'x':17, 'y':32},
-        'CHAR_GAP': 6
+        'CHAR_GAP': 6,
+        'WEIGHT': '19_490_98.h5'
     },
     '29': {
         'TRUTH': 'PKB79813029G6',
@@ -92,7 +94,8 @@ target={
         'BOX' : {'x':200, 'y':240, 'w':400, 'h':64},
         'TARGET_SIZE' : {'w':400, 'h':64},
         'OFFSET' : {'x':19, 'y':15},
-        'CHAR_GAP': 5
+        'CHAR_GAP': 5,
+        'WEIGHT': '29_400_64.h5'
         # 'BOX' : {'x':200, 'y':150, 'w':400, 'h':300},
         # 'TARGET_SIZE' : {'w':400, 'h':300},
         # 'OFFSET' : {'x':19, 'y':103}
@@ -105,7 +108,8 @@ target={
         'BOX' : {'x':60, 'y':239, 'w':700, 'h':140},
         'TARGET_SIZE' : {'w':490, 'h':98},
         'OFFSET' : {'x':13, 'y':33},
-        'CHAR_GAP': 6
+        'CHAR_GAP': 6,
+        'WEIGHT': '54_490_98.h5'
     }
 }
 TRUTH = target[args['target']]['TRUTH']
@@ -116,6 +120,8 @@ BOX = target[args['target']]['BOX']
 TARGET_SIZE = target[args['target']]['TARGET_SIZE']
 OFFSET = target[args['target']]['OFFSET']
 CHAR_GAP = target[args['target']]['CHAR_GAP']
+WEIGHT_FILE = target[args['target']]['WEIGHT']
+# WEIGHT_FILE = args['weight']
 
 # this creates larger "blotches" of noise which look
 # more realistic than just adding gaussian noise
@@ -145,11 +151,11 @@ if not args['predict']:
 def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=False):
     im = tm.copy()
     color = random.randrange(0, 128)
-    # x = random.randrange(box['x']-random_range, box['x']+random_range)
-    # y = random.randrange(box['y']-random_range, box['y']+random_range)
-    x = box['x']
-    y = box['y']
-    text = TRUTH
+    x = random.randrange(box['x']-random_range, box['x']+random_range)
+    y = random.randrange(box['y']-random_range, box['y']+random_range)
+    # x = box['x']
+    # y = box['y']
+    # text = TRUTH
     tsize = font.getsize('A')
     chw = tsize[0] - CHAR_GAP
     # draw = ImageDraw.Draw(im)
@@ -565,7 +571,12 @@ def loadData(files, w, h, box):
 def predict(weight, predict, img_w, img_h, box):
     text_X = loadData(predict, img_w, img_h, box)
     model, input_data, y_pred = createModel(img_w, img_h)
-    model.load_weights(weight)
+    try:
+        model.load_weights(weight)
+    except IOError:
+        print('Can\'t load weight!')
+        import sys
+        sys.exit()
     test_func = K.function([input_data], [y_pred])
     pred_result = decode_batch(test_func, text_X)[0]
 
@@ -591,24 +602,27 @@ def batch_predict(weight_folder, predict, img_w, img_h, box):
         pred_result = decode_batch(test_func, text_X)[0]
 
         print('{0:0>3d} predict = {1}'.format(i, pred_result))
-        print('    truth   = {0}'.format(args['answer']))
-        if(pred_result == args['answer']):
-            print('*********************')
+        # print('    truth   = {0}'.format(args['answer']))
+        # if(pred_result == args['answer']):
+        #     print('*********************')
         i +=1
 
 if __name__ == '__main__':
-    if args['predict']:
-        if not args['weight']:
-            import sys
-            print('No weight loaded!')
-            sys.exit()
-        if args['answer']:
-            batch_predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
-        else:
-            predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    predict(WEIGHT_FILE, [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    # if args['predict']:
+    #     if not args['weight']:
+    #         import sys
+    #         print('No weight loaded!')
+    #         sys.exit()
+    #     if args['answer']:
+    #         batch_predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    #     else:
+    #         predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
 
-    else:
-        run_name = datetime.datetime.now().strftime('%Y:%m:%d:%H:%M:%S')
-        train(run_name, 0, 400, TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    # else:
+    #     run_name = datetime.datetime.now().strftime('%Y:%m:%d:%H:%M:%S')
+    #     train(run_name, 0, 400, TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+
+
     # increase to wider images and start at epoch 20. The learned weights are reloaded
     # train(run_name, 20, 25, 512)
