@@ -620,7 +620,7 @@ if __name__ == '__main__':
     #         predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
 
     # else:
-    #     run_name = datetime.datetime.now().strftime('%Y:%m:%d:%H:%M:%S')
+    #     run_name = datetime.datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
     #     train(run_name, 0, 400, TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
 
 

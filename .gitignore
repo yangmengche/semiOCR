@@ -5,3 +5,6 @@ remote
 *.ttf
 /image_ocr/**
 debug
+/build
+/dist
+/__pycache__
