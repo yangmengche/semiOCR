@@ -21,6 +21,7 @@ if('tkinter' in args):
 DEBUG = args['debug']
 
 import os
+import shutil
 import itertools
 import codecs
 import re
@@ -49,6 +50,12 @@ root = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(root, 'image_ocr')
 np.random.seed(55)
 
+if DEBUG:
+    debug_output = os.path.abspath('./debug')
+    if not os.path.exists(debug_output):
+        os.makedirs(debug_output)
+
+
 # character classes and matching regex filter
 regex = r'^[A-Z0-9]+$'
 alphabet = u'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -71,10 +78,11 @@ target={
         'TRUTH': '08430097KIA1',
         'TEMPLATE' : 'Image__2018-03-15__15-05-19.bmp',
         'LENGTH' : 12,
-        'FONT_SIZE' : 72,
+        'FONT_SIZE' : 75,
         'BOX' : {'x':60, 'y':282, 'w':700, 'h':140},
         'TARGET_SIZE' : {'w':490, 'h':98},
-        'OFFSET' : {'x':0, 'y':0}
+        'OFFSET' : {'x':17, 'y':32},
+        'CHAR_GAP': 6
     },
     '29': {
         'TRUTH': 'PKB79813029G6',
@@ -83,18 +91,21 @@ target={
         'FONT_SIZE' : 40,
         'BOX' : {'x':200, 'y':240, 'w':400, 'h':64},
         'TARGET_SIZE' : {'w':400, 'h':64},
+        'OFFSET' : {'x':19, 'y':15},
+        'CHAR_GAP': 5
         # 'BOX' : {'x':200, 'y':150, 'w':400, 'h':300},
         # 'TARGET_SIZE' : {'w':400, 'h':300},
-        'OFFSET' : {'x':19, 'y':103}
+        # 'OFFSET' : {'x':19, 'y':103}
     },
     '54': {
         'TRUTH' : '8LOVO064MMC1',
         'TEMPLATE' : 'Image__2018-03-15__14-54-54.bmp',
         'LENGTH' : 12,
-        'FONT_SIZE' : 72,
+        'FONT_SIZE' : 75,
         'BOX' : {'x':60, 'y':239, 'w':700, 'h':140},
         'TARGET_SIZE' : {'w':490, 'h':98},
-        'OFFSET' : {'x':0, 'y':0}
+        'OFFSET' : {'x':13, 'y':33},
+        'CHAR_GAP': 6
     }
 }
 TRUTH = target[args['target']]['TRUTH']
@@ -104,6 +115,7 @@ FONT_SIZE = target[args['target']]['FONT_SIZE']
 BOX = target[args['target']]['BOX']
 TARGET_SIZE = target[args['target']]['TARGET_SIZE']
 OFFSET = target[args['target']]['OFFSET']
+CHAR_GAP = target[args['target']]['CHAR_GAP']
 
 # this creates larger "blotches" of noise which look
 # more realistic than just adding gaussian noise
@@ -139,7 +151,7 @@ def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=Fa
     y = box['y']
     text = TRUTH
     tsize = font.getsize('A')
-    chw = tsize[0] - 20
+    chw = tsize[0] - CHAR_GAP
     # draw = ImageDraw.Draw(im)
 
     if box['w'] < tsize[0]:
@@ -156,7 +168,6 @@ def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=Fa
     for i, ch in enumerate(text):
         draw.text((int(OFFSET['x']+i*chw), OFFSET['y']), ch, font=font, fill=color)
     # dilate text to simulate laser dot
-    canvas.save('train_img0.png')
 
     if bool(random.getrandbits(1)):
         buf = np.array(canvas)
@@ -165,13 +176,16 @@ def paint_text(text, w, h, box, ration=1, rotate=False, ud=False, multi_fonts=Fa
         canvas = Image.fromarray(buf)
     mask = ImageOps.invert(canvas)
     im.paste(canvas, box=(x, y), mask=mask)
-
-    im.save('train_img1.png')
-    im = im.crop(cropBox)
-    im.save('train_img2.png')
-    im = im.resize((w, h), Image.BILINEAR)
-    im.save('train_img3.png')
-    a = np.array(im)
+    im_c = im.crop(cropBox)
+    im_s = im_c.resize((w, h), Image.BILINEAR)
+    if DEBUG:
+        debug0 = os.path.join(debug_output, 'train_{0}_img0.png'.format(text))
+        if not os.path.exists(debug0):
+            canvas.save(os.path.join(debug_output, 'train_{0}_img0.png'.format(text)))
+            im.save(os.path.join(debug_output, 'train_{0}_img1.png'.format(text)))
+            im_c.save(os.path.join(debug_output, 'train_{0}_img2.png'.format(text)))
+            im_s.save(os.path.join(debug_output, 'train_{0}_img3.png'.format(text)))
+    a = np.array(im_s)
     a = a.astype(np.float32) / 255
     a = np.expand_dims(a, 0)
     return a
@@ -441,6 +455,7 @@ def createModel(img_w, img_h):
                    activation=act, kernel_initializer='he_normal',
                    name='conv1')(input_data)
     inner = MaxPooling2D(pool_size=(pool_size, pool_size), name='max1')(inner)
+
     inner = Conv2D(conv_filters, kernel_size, padding='same',
                    activation=act, kernel_initializer='he_normal',
                    name='conv2')(inner)
@@ -463,6 +478,7 @@ def createModel(img_w, img_h):
     # transforms RNN output to character activations:
     inner = Dense(get_output_size(), kernel_initializer='he_normal',
                   name='dense2')(concatenate([gru_2, gru_2b]))
+
     y_pred = Activation('softmax', name='softmax')(inner)
     model = Model(inputs=input_data, outputs=y_pred)
     if DEBUG:
@@ -534,7 +550,7 @@ def loadData(files, w, h, box):
         im = im.crop(cropBox)
         im = im.resize((w, h), Image.BILINEAR)
         if DEBUG:
-            im.save('debug.png')
+            im.save(os.path.join(debug_output, 'predict.png'))
         a = np.array(im)
         a = a.astype(np.float32) / 255
         a = np.expand_dims(a, 0)

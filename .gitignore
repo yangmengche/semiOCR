@@ -3,3 +3,5 @@ remote
 *.png
 *.csv
 *.ttf
+/image_ocr/**
+debug

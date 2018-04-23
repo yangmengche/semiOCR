@@ -11,7 +11,8 @@
       "program": "${file}",
       "args": [
         "-t",
-        "29"
+        "54",
+        "-d"
       ]
     },
     {
@@ -21,11 +22,12 @@
       "program": "${workspaceFolder}/image_ocr.py",
       "args": [
         "-t",
-        "29",
+        "54",
         "-p",
-        "./testSet/Image__2018-03-15__14-57-29.bmp",
+        "./testSet/Image__2018-03-15__14-54-54.bmp",
         "-w",
-        "./model_final/29_400_64.h5"
+        "./model_final/54_490_98.h5",
+        "-d"
       ]
     },
     {
