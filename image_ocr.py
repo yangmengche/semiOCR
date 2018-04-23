@@ -81,7 +81,7 @@ target={
         'LENGTH' : 12,
         'FONT_SIZE' : 75,
         'BOX' : {'x':60, 'y':282, 'w':700, 'h':140},
-        'TARGET_SIZE' : {'w':224, 'h':224},
+        'TARGET_SIZE' : {'w':490, 'h':98},
         'OFFSET' : {'x':17, 'y':32},
         'CHAR_GAP': 6,
         'WEIGHT': '19_490_98.h5'
