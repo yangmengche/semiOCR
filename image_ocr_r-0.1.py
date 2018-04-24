@@ -8,17 +8,17 @@ import argparse
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-t", "--target", required=True, help="target type")
-ap.add_argument("-p", "--predict", help="path to file of to predict")
-ap.add_argument("-w", "--weight", help="path to weight file")
-ap.add_argument("-tk", "--tkinter", action='store_true', help="setup tkinter")
-ap.add_argument("-a", "--answer", help="answer of prediction")
-ap.add_argument("-d", "--debug", action='store_true', help="Show debug message")
+ap.add_argument("-p", "--predict", required=True, help="path to file of to predict")
+# ap.add_argument("-w", "--weight", help="path to weight file")
+# ap.add_argument("-tk", "--tkinter", action='store_true', help="setup tkinter")
+# ap.add_argument("-a", "--answer", help="answer of prediction")
+# ap.add_argument("-d", "--debug", action='store_true', help="Show debug message")
 args = vars(ap.parse_args())
 
 if('tkinter' in args):
     import matplotlib
     matplotlib.use('Agg')
-DEBUG = args['debug']
+# DEBUG = args['debug']
 DEBUG = False
 
 import os
@@ -120,7 +120,8 @@ BOX = target[args['target']]['BOX']
 TARGET_SIZE = target[args['target']]['TARGET_SIZE']
 OFFSET = target[args['target']]['OFFSET']
 CHAR_GAP = target[args['target']]['CHAR_GAP']
-WEIGHT_FILE = args['weight']
+WEIGHT_FILE = target[args['target']]['WEIGHT']
+# WEIGHT_FILE = args['weight']
 
 # this creates larger "blotches" of noise which look
 # more realistic than just adding gaussian noise
@@ -601,24 +602,27 @@ def batch_predict(weight_folder, predict, img_w, img_h, box):
         pred_result = decode_batch(test_func, text_X)[0]
 
         print('{0:0>3d} predict = {1}'.format(i, pred_result))
-        print('    truth   = {0}'.format(args['answer']))
-        if(pred_result == args['answer']):
-            print('*********************')
+        # print('    truth   = {0}'.format(args['answer']))
+        # if(pred_result == args['answer']):
+        #     print('*********************')
         i +=1
 
 if __name__ == '__main__':
-    if args['predict']:
-        if not args['weight']:
-            import sys
-            print('No weight loaded!')
-            sys.exit()
-        if args['answer']:
-            batch_predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
-        else:
-            predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
-    else:
-        run_name = datetime.datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-        train(run_name, 0, 400, TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    predict(WEIGHT_FILE, [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    # if args['predict']:
+    #     if not args['weight']:
+    #         import sys
+    #         print('No weight loaded!')
+    #         sys.exit()
+    #     if args['answer']:
+    #         batch_predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+    #     else:
+    #         predict(args['weight'], [args['predict']], TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+
+    # else:
+    #     run_name = datetime.datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
+    #     train(run_name, 0, 400, TARGET_SIZE['w'], TARGET_SIZE['h'], BOX)
+
 
     # increase to wider images and start at epoch 20. The learned weights are reloaded
     # train(run_name, 20, 25, 512)

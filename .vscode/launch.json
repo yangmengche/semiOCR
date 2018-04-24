@@ -8,13 +8,19 @@
       "name": "Python: Current File",
       "type": "python",
       "request": "launch",
-      "program": "${file}",
+      "program": "${file}"
+    },
+    {
+      "name": "Training",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/image_ocr.py",
       "args": [
         "-t",
         "19",
         "-d"
       ]
-    },
+    },    
     {
       "name": "predict",
       "type": "python",
@@ -41,7 +47,7 @@
         "-p",
         "./testSet/Image__2018-03-15__14-54-54.bmp",
         "-w",
-        "./model_final",
+        "./model/54_490_98_0.0014",
         "-a",
         "8LOVO064MMC1"
       ]
